@@ -1,5 +1,16 @@
 package org.netty.proxy;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+import org.netty.config.PacLoader;
+import org.netty.config.RemoteServer;
+import org.netty.encryption.CryptFactory;
+import org.netty.encryption.ICrypt;
+import org.netty.manager.RemoteServerManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -11,6 +22,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.socks.SocksAddressType;
 import io.netty.handler.codec.socks.SocksCmdRequest;
 import io.netty.handler.codec.socks.SocksCmdResponse;
 import io.netty.handler.codec.socks.SocksCmdStatus;
@@ -18,29 +30,19 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import io.netty.util.concurrent.Promise;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.netty.config.Config;
-import org.netty.config.PacLoader;
-import org.netty.encryption.CryptFactory;
-import org.netty.encryption.ICrypt;
-
 @ChannelHandler.Sharable
 public final class SocksServerConnectHandler extends SimpleChannelInboundHandler<SocksCmdRequest> {
 
-	private static Log logger = LogFactory.getLog(SocksServerConnectHandler.class);
+	private static Logger logger = LoggerFactory.getLogger(SocksServerConnectHandler.class);
 
 	private final Bootstrap b = new Bootstrap();
 	private ICrypt _crypt;
-	private Config config;
+	private RemoteServer remoteServer;
 	private boolean isProxy = true;
 
-	public SocksServerConnectHandler(Config config) {
-		this.config = config;
-		this._crypt = CryptFactory.get(config.get_method(), config.get_password());
+	public SocksServerConnectHandler() {
+		this.remoteServer = RemoteServerManager.getRemoteServer();
+		this._crypt = CryptFactory.get(remoteServer.get_method(), remoteServer.get_password());
 	}
 
 	@Override
@@ -67,7 +69,7 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
 								outboundChannel.pipeline().addLast(inRelay);
 								ctx.pipeline().addLast(outRelay);
 							} catch (Exception e) {
-								logger.error(e);
+								logger.error("", e);
 							}
 						}
 					});
@@ -84,6 +86,8 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
 				.handler(new DirectClientHandler(promise));
 
 		setProxy(request.host());
+
+		logger.info("host = " + request.host() + ",port = " + request.port() + ",isProxy = " + isProxy);
 
 		b.connect(getIpAddr(request), getPort(request)).addListener(new ChannelFutureListener() {
 			@Override
@@ -102,8 +106,11 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
 	}
 
 	public void setProxy(String host) {
-		isProxy = PacLoader.isProxy(host);
-		logger.info("host = " + host + ",isProxy = " + isProxy);
+		if (PacLoader.is_global_mode()) {
+			isProxy = true;
+		} else {
+			isProxy = PacLoader.isProxy(host);
+		}
 	}
 
 	/**
@@ -114,7 +121,7 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
 	 */
 	private String getIpAddr(SocksCmdRequest request) {
 		if (isProxy) {
-			return config.get_ipAddr();
+			return remoteServer.get_ipAddr();
 		} else {
 			return request.host();
 		}
@@ -128,18 +135,18 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
 	 */
 	private int getPort(SocksCmdRequest request) {
 		if (isProxy) {
-			return config.get_port();
+			return remoteServer.get_port();
 		} else {
 			return request.port();
 		}
 	}
 
 	private SocksCmdResponse getSuccessResponse(SocksCmdRequest request) {
-		return new SocksCmdResponse(SocksCmdStatus.SUCCESS, request.addressType());
+		return new SocksCmdResponse(SocksCmdStatus.SUCCESS, SocksAddressType.IPv4);
 	}
 
 	private SocksCmdResponse getFailureResponse(SocksCmdRequest request) {
-		return new SocksCmdResponse(SocksCmdStatus.FAILURE, request.addressType());
+		return new SocksCmdResponse(SocksCmdStatus.FAILURE, SocksAddressType.IPv4);
 	}
 
 	/**

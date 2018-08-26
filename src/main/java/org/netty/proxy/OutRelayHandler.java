@@ -1,14 +1,14 @@
 package org.netty.proxy;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 /**
  * localserver接受到数据发送数据给remoteserver
@@ -18,13 +18,12 @@ import org.apache.commons.logging.LogFactory;
  */
 public final class OutRelayHandler extends ChannelInboundHandlerAdapter {
 
-	private static Log logger = LogFactory.getLog(OutRelayHandler.class);
+	private static Logger logger = LoggerFactory.getLogger(OutRelayHandler.class);
 
 	private final Channel relayChannel;
 	private SocksServerConnectHandler connectHandler;
 
-	public OutRelayHandler(Channel relayChannel,
-			SocksServerConnectHandler connectHandler) {
+	public OutRelayHandler(Channel relayChannel, SocksServerConnectHandler connectHandler) {
 		this.relayChannel = relayChannel;
 		this.connectHandler = connectHandler;
 	}
@@ -47,7 +46,7 @@ public final class OutRelayHandler extends ChannelInboundHandlerAdapter {
 				}
 			}
 		} catch (Exception e) {
-			logger.error("send data to remoteServer error",e);
+			logger.error("send data to remoteServer error", e);
 		} finally {
 			ReferenceCountUtil.release(msg);
 		}
@@ -55,9 +54,9 @@ public final class OutRelayHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) {
-		if (relayChannel.isActive()) {
-			SocksServerUtils.closeOnFlush(relayChannel);
-		}
+		SocksServerUtils.closeOnFlush(relayChannel);
+		SocksServerUtils.closeOnFlush(ctx.channel());
+		logger.info("outRelay channelInactive close");
 	}
 
 	@Override

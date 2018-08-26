@@ -1,8 +1,7 @@
 package org.netty.proxy;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.netty.config.Config;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -17,20 +16,12 @@ import io.netty.handler.codec.socks.SocksInitResponse;
 import io.netty.handler.codec.socks.SocksRequest;
 
 @ChannelHandler.Sharable
-public final class SocksServerHandler extends
-		SimpleChannelInboundHandler<SocksRequest> {
+public final class SocksServerHandler extends SimpleChannelInboundHandler<SocksRequest> {
 
-	private static Log logger = LogFactory.getLog(SocksServerHandler.class);
-
-	private Config config;
-
-	public SocksServerHandler(Config config) {
-		this.config = config;
-	}
+	private static Logger logger = LoggerFactory.getLogger(SocksServerHandler.class);
 
 	@Override
-	public void channelRead0(ChannelHandlerContext ctx,
-			SocksRequest socksRequest) throws Exception {
+	public void channelRead0(ChannelHandlerContext ctx, SocksRequest socksRequest) throws Exception {
 		switch (socksRequest.requestType()) {
 		case INIT: {
 			logger.info("localserver init");
@@ -47,7 +38,7 @@ public final class SocksServerHandler extends
 			SocksCmdRequest req = (SocksCmdRequest) socksRequest;
 			if (req.cmdType() == SocksCmdType.CONNECT) {
 				logger.info("localserver connect");
-				ctx.pipeline().addLast(new SocksServerConnectHandler(config));
+				ctx.pipeline().addLast(new SocksServerConnectHandler());
 				ctx.pipeline().remove(this);
 				ctx.fireChannelRead(socksRequest);
 			} else {
