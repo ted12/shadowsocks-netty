@@ -87,7 +87,7 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
 
 		setProxy(request.host());
 
-		logger.info("host = " + request.host() + ",port = " + request.port() + ",isProxy = " + isProxy);
+		logger.info("host = " + request.host() + ", port = " + request.port() + ",isProxy = " + isProxy);
 
 		b.connect(getIpAddr(request), getPort(request)).addListener(new ChannelFutureListener() {
 			@Override

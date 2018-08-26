@@ -24,7 +24,7 @@ public final class SocksServerHandler extends SimpleChannelInboundHandler<SocksR
 	public void channelRead0(ChannelHandlerContext ctx, SocksRequest socksRequest) throws Exception {
 		switch (socksRequest.requestType()) {
 		case INIT: {
-			logger.info("localserver init");
+			logger.debug("localserver init");
 			ctx.pipeline().addFirst(new SocksCmdRequestDecoder());
 			ctx.write(new SocksInitResponse(SocksAuthScheme.NO_AUTH));
 			break;
@@ -37,7 +37,7 @@ public final class SocksServerHandler extends SimpleChannelInboundHandler<SocksR
 		case CMD:
 			SocksCmdRequest req = (SocksCmdRequest) socksRequest;
 			if (req.cmdType() == SocksCmdType.CONNECT) {
-				logger.info("localserver connect");
+				logger.debug("localserver connect");
 				ctx.pipeline().addLast(new SocksServerConnectHandler());
 				ctx.pipeline().remove(this);
 				ctx.fireChannelRead(socksRequest);
